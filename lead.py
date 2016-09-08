@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import graphlab as gl
 import re, ast
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.cross_validation import train_test_split
@@ -88,13 +89,16 @@ def parse_stores(s):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('./data/lead_data.csv')
+    #df = pd.read_csv('./data/lead_data.csv')
+    df = pd.read_csv('./takehome/code/data/lead_data.csv')
     df = df.drop(['Unnamed: 0', 'income_zipcode'], axis=1)
+    
     stores = df['preferred_stores']
     stores = stores.fillna("['']")
 
     df = df.interpolate()
     df['referral'] = df['referral'].fillna('Facebook Ad')
+    df2 = df.copy()
     df = df.dropna()
     df = df.drop('preferred_stores', axis=1)
     df = pd.get_dummies(df)
@@ -156,3 +160,26 @@ if __name__ == '__main__':
         y_pred.append(bayes_predict(converts, non_converts, obs))
 
     #print y_pred
+
+    stores_list = parse_stores(stores)
+    df2['preferred_stores'] = stores_list
+    sf = gl.SFrame(df2)
+
+    sf2 = sf.unpack('preferred_stores')
+    df = sf2.to_dataframe()
+    df_dummies = pd.get_dummies(df)
+
+    train, test = train_test_split(df_dummies, test_size=0.2)
+    train_copy = train.copy()
+    test_copy = test.copy()
+
+    y_train = train.pop('converted').values
+    X_train = train
+
+    y_test = test.pop('converted').values
+    X_test = test
+
+    rf = RandomForestClassifier(n_estimators=500, oob_score=True, n_jobs=-1)
+    rf.fit(X_test, y_test)
+
+    
